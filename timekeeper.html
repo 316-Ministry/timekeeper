@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Timekeeper</title>
+        <style>
+            :root {
+                --bg-color: #ffffff;
+                --card-bg: #ffffff;
+                --text-color: #000000;
+                --border-color: #000000;
+                --shadow-color: #000000;
+                --input-bg: #ffffff;
+                --secondary-bg: #f0f0f0;
+
+                --btn-text: #ffffff;
+                --btn-bg: #000000;
+                --danger-bg: #e5e5e5;
+                --danger-text: #000000;
+                --success-bg: #e5e5e5;
+                --success-text: #000000;
+
+                --brutal-shadow: 6px 6px 0px var(--shadow-color);
+                --brutal-shadow-small: 3px 3px 0px var(--shadow-color);
+                --brutal-border: 3px solid var(--border-color);
+                --brutal-border-thin: 2px solid var(--border-color);
+            }
+
+            body.dark-mode {
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-color: #ffffff;
+                --border-color: #ffffff;
+                --shadow-color: #ffffff;
+                --input-bg: #2d2d2d;
+                --secondary-bg: #2d2d2d;
+
+                --btn-text: #000000;
+                --btn-bg: #ffffff;
+                --danger-bg: #404040;
+                --danger-text: #ffffff;
+                --success-bg: #404040;
+                --success-text: #ffffff;
+            }
+
+            body.retro-mode {
+                --bg-color: #feca57;
+                --card-bg: #ffffff;
+                --text-color: #000000;
+                --border-color: #000000;
+                --shadow-color: #000000;
+                --input-bg: #ffffff;
+                --secondary-bg: #ffeb3b;
+
+                --btn-text: #000000;
+                --btn-bg: #ff6b6b;
+                --danger-bg: #ff4d4d;
+                --danger-text: #000000;
+                --success-bg: #1dd1a1;
+                --success-text: #000000;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: "Courier New", Courier, monospace, system-ui;
+                font-weight: 700;
+            }
+
+            body {
+                background-color: var(--bg-color);
+                color: var(--text-color);
+                padding: 30px 20px;
+                transition:
+                    background-color 0.1s ease,
+                    color 0.1s ease;
+            }
+
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+                position: relative;
+            }
+
+            header {
+                margin-bottom: 40px;
+                border: var(--brutal-border);
+                background: var(--card-bg);
+                padding: 25px;
+                box-shadow: var(--brutal-shadow);
+            }
+
+            h1 {
+                font-size: 2rem;
+                text-transform: uppercase;
+                margin-bottom: 5px;
+                letter-spacing: -1px;
+            }
+
+            header p {
+                font-size: 0.9rem;
+                opacity: 0.8;
+                text-transform: uppercase;
+            }
+
+            .theme-toggle-container {
+                position: absolute;
+                top: 25px;
+                right: 25px;
+            }
+
+            .tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px;
+                margin-bottom: 30px;
+            }
+
+            .tab-btn {
+                padding: 12px 24px;
+                background: var(--card-bg);
+                color: var(--text-color);
+                border: var(--brutal-border);
+                box-shadow: var(--brutal-shadow-small);
+                cursor: pointer;
+                text-transform: uppercase;
+                font-size: 0.95rem;
+                transition: all 0.1s ease;
+            }
+
+            .tab-btn:hover {
+                transform: translate(-2px, -2px);
+                box-shadow: 5px 5px 0px var(--shadow-color);
+            }
+
+            .tab-btn.active {
+                background: var(--btn-bg);
+                color: var(--btn-text);
+                transform: translate(3px, 3px);
+                box-shadow: none;
+            }
+
+            .tab-content {
+                display: none;
+                background: var(--card-bg);
+                padding: 30px;
+                border: var(--brutal-border);
+                box-shadow: var(--brutal-shadow);
+                margin-bottom: 50px;
+            }
+
+            .tab-content.active {
+                display: block;
+            }
+
+            h3 {
+                font-size: 1.4rem;
+                text-transform: uppercase;
+                margin-bottom: 15px;
+                letter-spacing: -0.5px;
+            }
+
+            input,
+            select {
+                background: var(--input-bg);
+                color: var(--text-color);
+                border: var(--brutal-border-thin);
+                padding: 10px 14px;
+                font-size: 1rem;
+                border-radius: 0;
+                outline: none;
+            }
+
+            input:focus {
+                background: var(--secondary-bg);
+            }
+
+            button {
+                background: var(--btn-bg);
+                color: var(--btn-text);
+                border: var(--brutal-border-thin);
+                padding: 10px 20px;
+                font-size: 0.9rem;
+                text-transform: uppercase;
+                cursor: pointer;
+                border-radius: 0;
+                box-shadow: var(--brutal-shadow-small);
+                transition: all 0.05s ease;
+            }
+
+            button:hover {
+                transform: translate(-1px, -1px);
+                box-shadow: 4px 4px 0px var(--shadow-color);
+            }
+
+            button:active {
+                transform: translate(2px, 2px);
+                box-shadow: none;
+            }
+
+            button.btn-danger {
+                background: var(--danger-bg);
+                color: var(--danger-text);
+            }
+
+            .date-picker-section {
+                margin-bottom: 30px;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                border-bottom: var(--brutal-border);
+                padding-bottom: 20px;
+            }
+
+            .date-picker-section label {
+                text-transform: uppercase;
+                font-size: 1rem;
+            }
+
+            .person-log-card {
+                border: var(--brutal-border-thin);
+                padding: 20px;
+                margin-bottom: 20px;
+                background: var(--secondary-bg);
+                box-shadow: var(--brutal-shadow-small);
+            }
+
+            .person-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+                border-bottom: 2px dashed var(--border-color);
+                padding-bottom: 10px;
+            }
+
+            .person-name {
+                font-size: 1.1rem;
+                text-transform: uppercase;
+            }
+
+            .person-total {
+                font-size: 1.1rem;
+                background: var(--btn-bg);
+                color: var(--btn-text);
+                padding: 4px 10px;
+                border: var(--brutal-border-thin);
+                white-space: nowrap;
+            }
+
+            .row-intervals {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                margin-bottom: 15px;
+            }
+
+            .interval-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .interval-row label {
+                font-size: 0.8rem;
+                text-transform: uppercase;
+            }
+
+            .form-group {
+                display: flex;
+                gap: 15px;
+                margin-bottom: 25px;
+            }
+
+            .form-group input {
+                flex: 1;
+            }
+
+            .list-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+
+            .list-table th,
+            .list-table td {
+                padding: 14px;
+                text-align: left;
+                border: var(--brutal-border-thin);
+            }
+
+            .list-table th {
+                background-color: var(--btn-bg);
+                color: var(--btn-text);
+                text-transform: uppercase;
+            }
+
+            .io-section {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
+            }
+
+            @media (max-width: 768px) {
+                .io-section {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            .io-card {
+                border: var(--brutal-border-thin);
+                padding: 25px;
+                background: var(--secondary-bg);
+                box-shadow: var(--brutal-shadow-small);
+            }
+
+            .io-card p {
+                font-size: 0.8rem;
+                text-transform: uppercase;
+                margin-top: 8px;
+                opacity: 0.8;
+            }
+
+            .io-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .file-input-wrapper {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>DBC's HBC Decor Timekeeper</h1>
+                <p>
+                    Map personnel, log time, export sheets, and synchronize
+                    cross-device files.
+                </p>
+
+                <div class="theme-toggle-container">
+                    <button id="theme-toggle-btn" onclick="cycleThemeState()">
+                        Theme: Light
+                    </button>
+                </div>
+            </header>
+
+            <div class="tabs">
+                <button
+                    class="tab-btn active"
+                    onclick="switchTab('logger-tab', this)"
+                >
+                    Time Logger
+                </button>
+                <button class="tab-btn" onclick="switchTab('report-tab', this)">
+                    Accumulated Report
+                </button>
+                <button
+                    class="tab-btn"
+                    onclick="switchTab('personnel-tab', this)"
+                >
+                    Personnel Roster
+                </button>
+                <button class="tab-btn" onclick="switchTab('io-tab', this)">
+                    Data Sync & Export
+                </button>
+            </div>
+
+            <div id="logger-tab" class="tab-content active">
+                <div class="date-picker-section">
+                    <label for="log-date">Target Date:</label>
+                    <input type="date" id="log-date" />
+                </div>
+
+                <div id="logger-roster-container"></div>
+            </div>
+
+            <div id="report-tab" class="tab-content">
+                <h3>Grand Totals Report</h3>
+                <p
+                    style="
+                        font-size: 0.85rem;
+                        margin-bottom: 20px;
+                        opacity: 0.8;
+                        text-transform: uppercase;
+                    "
+                >
+                    A historical overview tracking all combined intervals across
+                    all saved days for your current team.
+                </p>
+
+                <table class="list-table">
+                    <thead>
+                        <tr>
+                            <th>Personnel Identity Name</th>
+                            <th style="width: 200px; text-align: right">
+                                Total Accumulated Hours
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="personnel-tab" class="tab-content">
+                <h3>Team Configuration</h3>
+
+                <div class="form-group">
+                    <input
+                        type="text"
+                        id="new-person-name"
+                        placeholder="Enter Full Name..."
+                    />
+                    <button onclick="addPersonnel()">Add Personnel</button>
+                </div>
+
+                <table class="list-table">
+                    <thead>
+                        <tr>
+                            <th>Registered Identifier Name</th>
+                            <th style="width: 140px; text-align: center">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnel-table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="io-tab" class="tab-content">
+                <div class="io-section">
+                    <!-- Output Pipeline -->
+                    <div class="io-card">
+                        <h3>Export Datasets</h3>
+                        <div class="io-actions">
+                            <button
+                                onclick="exportToCSV()"
+                                style="
+                                    background-color: var(--success-bg);
+                                    color: var(--success-text);
+                                "
+                            >
+                                Download Sheet Report (.CSV)
+                            </button>
+                            <p>
+                                Compiles structured spreadsheet items ready for
+                                simple formulas and total metrics inside
+                                Microsoft Excel.
+                            </p>
+
+                            <button onclick="exportToJSON()">
+                                Download Sync File (.JSON)
+                            </button>
+                            <p>
+                                Saves internal database definitions. Pass this
+                                file cleanly to other devices to import your
+                                data.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="io-card">
+                        <h3>Import Workspace</h3>
+                        <div class="file-input-wrapper">
+                            <label for="import-file"
+                                >Upload Workspace JSON:</label
+                            >
+                            <input
+                                type="file"
+                                id="import-file"
+                                accept=".json"
+                            />
+                            <button
+                                onclick="importFromJSON()"
+                                class="btn-danger"
+                            >
+                                Process Source File
+                            </button>
+                        </div>
+                        <p
+                            style="
+                                color: var(--text-color);
+                                font-weight: bold;
+                                opacity: 1;
+                            "
+                        >
+                            Warning: Parsing a file clears and replaces all
+                            current session data maps on this local web browser.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let appState = {
+                personnel: [],
+                timeLogs: {},
+            };
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const currentDay = new Date().toISOString().split("T")[0];
+                document.getElementById("log-date").value = currentDay;
+
+                initThemeConfiguration();
+
+                loadFromLocalStorage();
+
+                document
+                    .getElementById("log-date")
+                    .addEventListener("change", renderTimeLogger);
+
+                renderPersonnelTable();
+                renderTimeLogger();
+            });
+
+            function initThemeConfiguration() {
+                const savedTheme =
+                    localStorage.getItem("timelogger_theme_mode") || "light";
+                applyThemeState(savedTheme);
+            }
+
+            function applyThemeState(themeMode) {
+                document.body.classList.remove("dark-mode", "retro-mode");
+                const controlBtn = document.getElementById("theme-toggle-btn");
+
+                if (themeMode === "dark") {
+                    document.body.classList.add("dark-mode");
+                    controlBtn.textContent = "Theme: Dark";
+                } else if (themeMode === "retro") {
+                    document.body.classList.add("retro-mode");
+                    controlBtn.textContent = "Theme: Retro";
+                } else {
+                    controlBtn.textContent = "Theme: Light";
+                }
+                localStorage.setItem("timelogger_theme_mode", themeMode);
+            }
+
+            function cycleThemeState() {
+                const activeThemeSetting =
+                    localStorage.getItem("timelogger_theme_mode") || "light";
+                let subsequentTheme = "light";
+
+                if (activeThemeSetting === "light") subsequentTheme = "dark";
+                else if (activeThemeSetting === "dark")
+                    subsequentTheme = "retro";
+                else if (activeThemeSetting === "retro")
+                    subsequentTheme = "light";
+
+                applyThemeState(subsequentTheme);
+            }
+
+            function loadFromLocalStorage() {
+                const schema = localStorage.getItem("timelogger_app_state");
+                if (schema) {
+                    try {
+                        appState = JSON.parse(schema);
+                        if (!appState.personnel) appState.personnel = [];
+                        if (!appState.timeLogs) appState.timeLogs = {};
+                    } catch (error) {
+                        console.error(
+                            "Local context context read failure.",
+                            error,
+                        );
+                    }
+                }
+            }
+
+            function saveToLocalStorage() {
+                localStorage.setItem(
+                    "timelogger_app_state",
+                    JSON.stringify(appState),
+                );
+            }
+
+            function switchTab(tabId, menuButton) {
+                document
+                    .querySelectorAll(".tab-content")
+                    .forEach((element) => element.classList.remove("active"));
+                document
+                    .querySelectorAll(".tab-btn")
+                    .forEach((element) => element.classList.remove("active"));
+
+                document.getElementById(tabId).classList.add("active");
+                menuButton.classList.add("active");
+
+                if (tabId === "logger-tab") {
+                    renderTimeLogger();
+                } else if (tabId === "report-tab") {
+                    renderReportTable();
+                }
+            }
+
+            function renderPersonnelTable() {
+                const tbody = document.querySelectorAll(
+                    "#personnel-table-body",
+                )[0];
+                tbody.innerHTML = "";
+
+                if (appState.personnel.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
+                    return;
+                }
+
+                appState.personnel.forEach((person, index) => {
+                    const rowElement = document.createElement("tr");
+                    rowElement.innerHTML = `
+                <td><strong>${escapeHtml(person)}</strong></td>
+                <td style="text-align: center;">
+                    <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deletePersonnel(${index})">Remove</button>
+                </td>
+            `;
+                    tbody.appendChild(rowElement);
+                });
+            }
+
+            function addPersonnel() {
+                const field = document.getElementById("new-person-name");
+                const processedIdentity = field.value.trim();
+
+                if (!processedIdentity) return;
+                if (appState.personnel.includes(processedIdentity)) {
+                    alert("Name already active inside current workspace.");
+                    return;
+                }
+
+                appState.personnel.push(processedIdentity);
+                field.value = "";
+                saveToLocalStorage();
+                renderPersonnelTable();
+            }
+
+            function renderReportTable() {
+                const tbody = document.getElementById("report-table-body");
+                tbody.innerHTML = "";
+
+                if (appState.personnel.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
+                    return;
+                }
+
+                appState.personnel.forEach((person) => {
+                    let aggregatedMinutes = 0;
+
+                    Object.keys(appState.timeLogs).forEach((date) => {
+                        if (
+                            appState.timeLogs[date] &&
+                            appState.timeLogs[date][person]
+                        ) {
+                            const logsArray = appState.timeLogs[date][person];
+                            logsArray.forEach((block) => {
+                                if (block.start && block.end) {
+                                    const markerStart =
+                                        parseTimeStringToMinutes(block.start);
+                                    const markerEnd = parseTimeStringToMinutes(
+                                        block.end,
+                                    );
+                                    if (markerEnd > markerStart) {
+                                        aggregatedMinutes +=
+                                            markerEnd - markerStart;
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                    const grandTotalHours = aggregatedMinutes / 60;
+
+                    const rowElement = document.createElement("tr");
+                    rowElement.innerHTML = `
+                <td><strong>${escapeHtml(person)}</strong></td>
+                <td style="text-align: right;"><span class="person-total">${grandTotalHours.toFixed(2)} HRS</span></td>
+            `;
+                    tbody.appendChild(rowElement);
+                });
+            }
+
+            function deletePersonnel(index) {
+                if (
+                    confirm(
+                        `Purge matching record parameter target: "${appState.personnel[index]}"?`,
+                    )
+                ) {
+                    appState.personnel.splice(index, 1);
+                    saveToLocalStorage();
+                    renderPersonnelTable();
+                }
+            }
+
+            function renderTimeLogger() {
+                const selectedDate = document.getElementById("log-date").value;
+                const mainContainer = document.getElementById(
+                    "logger-roster-container",
+                );
+                mainContainer.innerHTML = "";
+
+                if (!selectedDate) return;
+
+                if (appState.personnel.length === 0) {
+                    mainContainer.innerHTML =
+                        '<p style="text-align: center; padding: 20px; opacity: 0.7;">Roster empty. Access the personnel tab to setup team.</p>';
+                    return;
+                }
+
+                if (!appState.timeLogs[selectedDate]) {
+                    appState.timeLogs[selectedDate] = {};
+                }
+
+                appState.personnel.forEach((person) => {
+                    if (!appState.timeLogs[selectedDate][person]) {
+                        appState.timeLogs[selectedDate][person] = [];
+                    }
+
+                    const elementsList =
+                        appState.timeLogs[selectedDate][person];
+                    const identityCard = document.createElement("div");
+                    identityCard.className = "person-log-card";
+
+                    const blockHeader = document.createElement("div");
+                    blockHeader.className = "person-header";
+                    blockHeader.innerHTML = `
+                <span class="person-name">${escapeHtml(person)}</span>
+                <span class="person-total"><span id="total-${slugify(person)}">0.00</span> HRS</span>
+            `;
+                    identityCard.appendChild(blockHeader);
+
+                    const innerIntervalFormWrap = document.createElement("div");
+                    innerIntervalFormWrap.className = "row-intervals";
+                    innerIntervalFormWrap.id = `intervals-${slugify(person)}`;
+
+                    elementsList.forEach((interval, index) => {
+                        innerIntervalFormWrap.appendChild(
+                            createIntervalInputRow(
+                                person,
+                                selectedDate,
+                                interval,
+                                index,
+                            ),
+                        );
+                    });
+
+                    identityCard.appendChild(innerIntervalFormWrap);
+
+                    const trackingActionBtn = document.createElement("button");
+                    trackingActionBtn.textContent = "+ Append Interval Block";
+                    trackingActionBtn.style.padding = "6px 12px";
+                    trackingActionBtn.style.fontSize = "0.75rem";
+                    trackingActionBtn.onclick = () =>
+                        addIntervalBlock(selectedDate, person);
+                    identityCard.appendChild(trackingActionBtn);
+
+                    mainContainer.appendChild(identityCard);
+                    calculateDailyMemberTotal(selectedDate, person);
+                });
+            }
+
+            function createIntervalInputRow(
+                person,
+                targetDate,
+                valueBlock,
+                index,
+            ) {
+                const dynamicRow = document.createElement("div");
+                dynamicRow.className = "interval-row";
+                dynamicRow.innerHTML = `
+            <label>In:</label>
+            <input type="time" value="${valueBlock.start || ""}" onchange="updateRowMetrics('${targetDate}', '${escapeJs(person)}', ${index}, 'start', this.value)">
+            <label>Out:</label>
+            <input type="time" value="${valueBlock.end || ""}" onchange="updateRowMetrics('${targetDate}', '${escapeJs(person)}', ${index}, 'end', this.value)">
+            <button class="btn-danger" style="padding: 6px 10px; font-size: 0.75rem;" onclick="deleteIntervalBlock('${targetDate}', '${escapeJs(person)}', ${index})">✕</button>
+        `;
+                return dynamicRow;
+            }
+
+            function addIntervalBlock(targetDate, identity) {
+                appState.timeLogs[targetDate][identity].push({
+                    start: "",
+                    end: "",
+                });
+                saveToLocalStorage();
+                renderTimeLogger();
+            }
+
+            function updateRowMetrics(
+                targetDate,
+                identity,
+                index,
+                field,
+                metricsValue,
+            ) {
+                appState.timeLogs[targetDate][identity][index][field] =
+                    metricsValue;
+                saveToLocalStorage();
+                calculateDailyMemberTotal(targetDate, identity);
+            }
+
+            function deleteIntervalBlock(targetDate, identity, index) {
+                appState.timeLogs[targetDate][identity].splice(index, 1);
+                saveToLocalStorage();
+                renderTimeLogger();
+            }
+
+            function calculateDailyMemberTotal(targetDate, identity) {
+                const trackingArray =
+                    appState.timeLogs[targetDate][identity] || [];
+                let accruedMinutes = 0;
+
+                trackingArray.forEach((block) => {
+                    if (block.start && block.end) {
+                        const markerStart = parseTimeStringToMinutes(
+                            block.start,
+                        );
+                        const markerEnd = parseTimeStringToMinutes(block.end);
+
+                        if (markerEnd > markerStart) {
+                            accruedMinutes += markerEnd - markerStart;
+                        }
+                    }
+                });
+
+                const hourlySum = accruedMinutes / 60;
+                document.getElementById(
+                    `total-${slugify(identity)}`,
+                ).textContent = hourlySum.toFixed(2);
+            }
+
+            function parseTimeStringToMinutes(timeStringValue) {
+                const [hourUnits, minuteUnits] = timeStringValue
+                    .split(":")
+                    .map(Number);
+                return hourUnits * 60 + minuteUnits;
+            }
+
+            function exportToCSV() {
+                let textDataBuffer = "data:text/csv;charset=utf-8,";
+                textDataBuffer +=
+                    "Date,Name,Start Time,End Time,Total Hours\r\n";
+
+                let linesAggregated = 0;
+
+                Object.keys(appState.timeLogs)
+                    .sort()
+                    .forEach((date) => {
+                        Object.keys(appState.timeLogs[date]).forEach(
+                            (person) => {
+                                const entryBlocks =
+                                    appState.timeLogs[date][person];
+
+                                entryBlocks.forEach((block) => {
+                                    if (block.start && block.end) {
+                                        const parsingIn =
+                                            parseTimeStringToMinutes(
+                                                block.start,
+                                            );
+                                        const parsingOut =
+                                            parseTimeStringToMinutes(block.end);
+                                        let durationCalculated = 0;
+                                        if (parsingOut > parsingIn) {
+                                            durationCalculated =
+                                                (parsingOut - parsingIn) / 60;
+                                        }
+
+                                        const escapedIdentityString =
+                                            person.replace(/"/g, '""');
+                                        textDataBuffer += `"${date}","${escapedIdentityString}","${block.start}","${block.end}",${durationCalculated.toFixed(2)}\r\n`;
+                                        linesAggregated++;
+                                    }
+                                });
+                            },
+                        );
+                    });
+
+                if (linesAggregated === 0) {
+                    alert("No data exists to process spreadsheet sheets.");
+                    return;
+                }
+
+                const cleanURI = encodeURI(textDataBuffer);
+                const processingAnchor = document.createElement("a");
+                processingAnchor.setAttribute("href", cleanURI);
+                processingAnchor.setAttribute(
+                    "download",
+                    `TimeSheet_Report_${new Date().toISOString().split("T")[0]}.csv`,
+                );
+                document.body.appendChild(processingAnchor);
+                processingAnchor.click();
+                document.body.removeChild(processingAnchor);
+            }
+
+            function exportToJSON() {
+                const schemaString =
+                    "data:text/json;charset=utf-8," +
+                    encodeURIComponent(JSON.stringify(appState, null, 2));
+                const anchorNode = document.createElement("a");
+                anchorNode.setAttribute("href", schemaString);
+                anchorNode.setAttribute(
+                    "download",
+                    `timelog_workspace_backup_${new Date().toISOString().split("T")[0]}.json`,
+                );
+                document.body.appendChild(anchorNode);
+                anchorNode.click();
+                anchorNode.removeChild(anchorNode);
+            }
+
+            function importFromJSON() {
+                const interfaceUploader =
+                    document.getElementById("import-file");
+
+                if (interfaceUploader.files.length === 0) {
+                    alert("Please provide a sync database target .json file.");
+                    return;
+                }
+
+                const validationCheck = confirm(
+                    "Executing overwrite actions swaps active application structures with uploaded logs. Continue?",
+                );
+                if (!validationCheck) return;
+
+                const uploadedFileBlob = interfaceUploader.files[0];
+                const streamReader = new FileReader();
+
+                streamReader.onload = function (event) {
+                    try {
+                        const verificationObject = JSON.parse(
+                            event.target.result,
+                        );
+
+                        if (
+                            verificationObject &&
+                            typeof verificationObject === "object" &&
+                            "personnel" in verificationObject &&
+                            "timeLogs" in verificationObject
+                        ) {
+                            appState = verificationObject;
+                            saveToLocalStorage();
+
+                            alert(
+                                "Import successful! Workspace structural states re-synchronized.",
+                            );
+
+                            renderPersonnelTable();
+                            renderTimeLogger();
+                            interfaceUploader.value = "";
+                        } else {
+                            alert(
+                                "Parsed file properties mismatch expected application definitions framework schema.",
+                            );
+                        }
+                    } catch (err) {
+                        alert(
+                            "Processing failed: File contents mismatch native structured JSON layout guidelines.",
+                        );
+                        console.error(err);
+                    }
+                };
+
+                streamReader.readAsText(uploadedFileBlob);
+            }
+
+            function slugify(textVal) {
+                return textVal
+                    .toString()
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, "-")
+                    .replace(/[^\w\-]+/g, "");
+            }
+
+            function escapeHtml(textVal) {
+                return String(textVal).replace(/[&<>"'`=\/]/g, function (char) {
+                    return {
+                        "&": "&amp;",
+                        "<": "&lt;",
+                        ">": "&gt;",
+                        '"': "&quot;",
+                        "'": "&#39;",
+                        "/": "&#x2F;",
+                        "=": "&#x3D;",
+                        "`": "&#x60;",
+                    }[char];
+                });
+            }
+
+            function escapeJs(textVal) {
+                return String(textVal)
+                    .replace(/'/g, "\\'")
+                    .replace(/"/g, '\\"');
+            }
+        </script>
+    </body>
+</html>
