@@ -25,6 +25,8 @@
                 --brutal-shadow-small: 3px 3px 0px var(--shadow-color);
                 --brutal-border: 3px solid var(--border-color);
                 --brutal-border-thin: 2px solid var(--border-color);
+
+                --main-font: "Courier New", Courier, monospace, system-ui;
             }
 
             body.dark-mode {
@@ -61,11 +63,43 @@
                 --success-text: #000000;
             }
 
+            body.sage-mode {
+                --bg-color: #d8e2dc;
+                --card-bg: #ffffff;
+                --text-color: #1a1f1b;
+                --border-color: #1a1f1b;
+                --shadow-color: #1a1f1b;
+                --input-bg: #ffffff;
+                --secondary-bg: #c4d1c8;
+
+                --btn-text: #ffffff;
+                --btn-bg: #5f7362;
+                --danger-bg: #737373;
+                --danger-text: #ffffff;
+                --success-bg: #8ba690;
+                --success-text: #000000;
+            }
+
+            body.font-arial {
+                --main-font: "Arial", Helvetica, sans-serif;
+            }
+
+            body.font-retro {
+                --main-font: "Impact", "Arial Black", sans-serif;
+                letter-spacing: 0.5px;
+            }
+
+            body.font-sans {
+                --main-font:
+                    system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+                    Arial, sans-serif;
+            }
+
             * {
                 box-sizing: border-box;
                 margin: 0;
                 padding: 0;
-                font-family: "Courier New", Courier, monospace, system-ui;
+                font-family: var(--main-font);
                 font-weight: 700;
             }
 
@@ -109,6 +143,8 @@
                 position: absolute;
                 top: 25px;
                 right: 25px;
+                display: flex;
+                gap: 10px;
             }
 
             .tabs {
@@ -149,10 +185,27 @@
                 border: var(--brutal-border);
                 box-shadow: var(--brutal-shadow);
                 margin-bottom: 50px;
+                position: relative;
             }
 
             .tab-content.active {
                 display: block;
+            }
+
+            .block-actions {
+                position: absolute;
+                top: 25px;
+                right: 25px;
+                display: flex;
+                gap: 10px;
+            }
+
+            .icon-btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+                display: flex;
+                align-items: center;
+                gap: 6px;
             }
 
             h3 {
@@ -273,6 +326,7 @@
                 display: flex;
                 gap: 15px;
                 margin-bottom: 25px;
+                max-width: 70%;
             }
 
             .form-group input {
@@ -307,6 +361,9 @@
             @media (max-width: 768px) {
                 .io-section {
                     grid-template-columns: 1fr;
+                }
+                .form-group {
+                    max-width: 100%;
                 }
             }
 
@@ -350,6 +407,9 @@
                     <button id="theme-toggle-btn" onclick="cycleThemeState()">
                         Theme: Light
                     </button>
+                    <button id="font-toggle-btn" onclick="cycleFontState()">
+                        Font: Mono
+                    </button>
                 </div>
             </header>
 
@@ -384,6 +444,15 @@
             </div>
 
             <div id="report-tab" class="tab-content">
+                <div class="block-actions">
+                    <button
+                        class="icon-btn"
+                        onclick="exportReportToCSV()"
+                        title="Export Report Table to CSV"
+                    >
+                        <span>📤</span> Export CSV
+                    </button>
+                </div>
                 <h3>Grand Totals Report</h3>
                 <p
                     style="
@@ -391,6 +460,7 @@
                         margin-bottom: 20px;
                         opacity: 0.8;
                         text-transform: uppercase;
+                        padding-right: 160px;
                     "
                 >
                     A historical overview tracking all combined intervals across
@@ -411,6 +481,29 @@
             </div>
 
             <div id="personnel-tab" class="tab-content">
+                <div class="block-actions">
+                    <button
+                        class="icon-btn"
+                        onclick="triggerRosterImport()"
+                        title="Import Roster Sheet from CSV"
+                    >
+                        <span>📥</span> Import CSV
+                    </button>
+                    <button
+                        class="icon-btn"
+                        onclick="exportRosterToCSV()"
+                        title="Export Roster Sheet to CSV"
+                    >
+                        <span>📤</span> Export CSV
+                    </button>
+                    <input
+                        type="file"
+                        id="roster-import-file"
+                        accept=".csv"
+                        style="display: none"
+                        onchange="importRosterFromCSV(this)"
+                    />
+                </div>
                 <h3>Team Configuration</h3>
 
                 <div class="form-group">
@@ -437,7 +530,6 @@
 
             <div id="io-tab" class="tab-content">
                 <div class="io-section">
-                    <!-- Output Pipeline -->
                     <div class="io-card">
                         <h3>Export Datasets</h3>
                         <div class="io-actions">
@@ -511,7 +603,6 @@
                 document.getElementById("log-date").value = currentDay;
 
                 initThemeConfiguration();
-
                 loadFromLocalStorage();
 
                 document
@@ -526,10 +617,18 @@
                 const savedTheme =
                     localStorage.getItem("timelogger_theme_mode") || "light";
                 applyThemeState(savedTheme);
+
+                const savedFont =
+                    localStorage.getItem("timelogger_font_mode") || "mono";
+                applyFontState(savedFont);
             }
 
             function applyThemeState(themeMode) {
-                document.body.classList.remove("dark-mode", "retro-mode");
+                document.body.classList.remove(
+                    "dark-mode",
+                    "retro-mode",
+                    "sage-mode",
+                );
                 const controlBtn = document.getElementById("theme-toggle-btn");
 
                 if (themeMode === "dark") {
@@ -538,6 +637,9 @@
                 } else if (themeMode === "retro") {
                     document.body.classList.add("retro-mode");
                     controlBtn.textContent = "Theme: Retro";
+                } else if (themeMode === "sage") {
+                    document.body.classList.add("sage-mode");
+                    controlBtn.textContent = "Theme: Sage";
                 } else {
                     controlBtn.textContent = "Theme: Light";
                 }
@@ -553,9 +655,49 @@
                 else if (activeThemeSetting === "dark")
                     subsequentTheme = "retro";
                 else if (activeThemeSetting === "retro")
+                    subsequentTheme = "sage";
+                else if (activeThemeSetting === "sage")
                     subsequentTheme = "light";
 
                 applyThemeState(subsequentTheme);
+            }
+
+            function applyFontState(fontMode) {
+                document.body.classList.remove(
+                    "font-sans",
+                    "font-arial",
+                    "font-retro",
+                );
+                const fontBtn = document.getElementById("font-toggle-btn");
+
+                if (fontMode === "sans") {
+                    document.body.classList.add("font-sans");
+                    fontBtn.textContent = "Font: Sans";
+                } else if (fontMode === "arial") {
+                    document.body.classList.add("font-arial");
+                    fontBtn.textContent = "Font: Arial";
+                } else if (fontMode === "retro") {
+                    document.body.classList.add("font-retro");
+                    fontBtn.textContent = "Font: Retro";
+                } else {
+                    fontBtn.textContent = "Font: Mono";
+                }
+
+                localStorage.setItem("timelogger_font_mode", fontMode);
+            }
+
+            function cycleFontState() {
+                const activeFontSetting =
+                    localStorage.getItem("timelogger_font_mode") || "mono";
+                let subsequentFont = "mono";
+
+                if (activeFontSetting === "mono") subsequentFont = "sans";
+                else if (activeFontSetting === "sans") subsequentFont = "arial";
+                else if (activeFontSetting === "arial")
+                    subsequentFont = "retro";
+                else if (activeFontSetting === "retro") subsequentFont = "mono";
+
+                applyFontState(subsequentFont);
             }
 
             function loadFromLocalStorage() {
@@ -965,6 +1107,210 @@
                 streamReader.readAsText(uploadedFileBlob);
             }
 
+            function triggerRosterImport() {
+                document.getElementById("roster-import-file").click();
+            }
+
+            function importRosterFromCSV(input) {
+                if (input.files.length === 0) return;
+                const targetFile = input.files[0];
+                const streamReader = new FileReader();
+
+                streamReader.onload = function (event) {
+                    const documentText = event.target.result;
+                    const documentLines = documentText.split(/\r?\n/);
+
+                    if (
+                        documentLines.length === 0 ||
+                        (documentLines.length === 1 &&
+                            documentLines[0].trim() === "")
+                    ) {
+                        alert("The target CSV document is completely empty.");
+                        return;
+                    }
+
+                    let parsedIndex = 0;
+                    const initialHeaderSegments = documentLines[0].split(",");
+                    let evaluationHeaderFound = false;
+
+                    for (
+                        let step = 0;
+                        step < initialHeaderSegments.length;
+                        step++
+                    ) {
+                        const validatedHeader = initialHeaderSegments[step]
+                            .replace(/^["']|["']$/g, "")
+                            .trim()
+                            .toLowerCase();
+                        if (
+                            validatedHeader === "name" ||
+                            validatedHeader === "personnel" ||
+                            validatedHeader === "full name"
+                        ) {
+                            parsedIndex = step;
+                            evaluationHeaderFound = true;
+                            break;
+                        }
+                    }
+
+                    let indexIterator = evaluationHeaderFound ? 1 : 0;
+                    let incomingRecordsCounter = 0;
+                    let bypassedDuplicatesCounter = 0;
+
+                    for (
+                        let step = indexIterator;
+                        step < documentLines.length;
+                        step++
+                    ) {
+                        const dynamicLineItem = documentLines[step].trim();
+                        if (!dynamicLineItem) continue;
+
+                        let segmentsBuffer = [];
+                        let characterBuffer = "";
+                        let statusInsideQuotes = false;
+
+                        for (
+                            let letterIndex = 0;
+                            letterIndex < dynamicLineItem.length;
+                            letterIndex++
+                        ) {
+                            const characterToken = dynamicLineItem[letterIndex];
+                            if (
+                                characterToken === '"' ||
+                                characterToken === "'"
+                            ) {
+                                statusInsideQuotes = !statusInsideQuotes;
+                            } else if (
+                                characterToken === "," &&
+                                !statusInsideQuotes
+                            ) {
+                                segmentsBuffer.push(
+                                    characterBuffer
+                                        .trim()
+                                        .replace(/^["']|["']$/g, ""),
+                                );
+                                characterBuffer = "";
+                            } else {
+                                characterBuffer += characterToken;
+                            }
+                        }
+                        segmentsBuffer.push(
+                            characterBuffer.trim().replace(/^["']|["']$/g, ""),
+                        );
+
+                        if (segmentsBuffer.length > parsedIndex) {
+                            const processedRecordName =
+                                segmentsBuffer[parsedIndex].trim();
+                            if (processedRecordName) {
+                                if (
+                                    !appState.personnel.includes(
+                                        processedRecordName,
+                                    )
+                                ) {
+                                    appState.personnel.push(
+                                        processedRecordName,
+                                    );
+                                    incomingRecordsCounter++;
+                                } else {
+                                    bypassedDuplicatesCounter++;
+                                }
+                            }
+                        }
+                    }
+
+                    if (incomingRecordsCounter > 0) {
+                        saveToLocalStorage();
+                        renderPersonnelTable();
+                        renderTimeLogger();
+                        alert(
+                            `Successfully processed and loaded ${incomingRecordsCounter} personnel roster entries!${bypassedDuplicatesCounter > 0 ? ` (${bypassedDuplicatesCounter} matches skipped)` : ""}`,
+                        );
+                    } else {
+                        alert(
+                            "No alternative unique identities could be parsed from source layout file entries.",
+                        );
+                    }
+                    input.value = "";
+                };
+                streamReader.readAsText(targetFile);
+            }
+
+            function exportRosterToCSV() {
+                if (appState.personnel.length === 0) {
+                    alert("Roster configuration context parameters are empty.");
+                    return;
+                }
+                let dataOutputBuffer = "data:text/csv;charset=utf-8,";
+                dataOutputBuffer += "Name\r\n";
+
+                appState.personnel.forEach((person) => {
+                    const cleanIdentifier = person.replace(/"/g, '""');
+                    dataOutputBuffer += `"${cleanIdentifier}"\r\n`;
+                });
+
+                const URIStream = encodeURI(dataOutputBuffer);
+                const layoutAnchor = document.createElement("a");
+                layoutAnchor.setAttribute("href", URIStream);
+                layoutAnchor.setAttribute(
+                    "download",
+                    `Personnel_Roster_Backup_${new Date().toISOString().split("T")[0]}.csv`,
+                );
+                document.body.appendChild(layoutAnchor);
+                layoutAnchor.click();
+                document.body.removeChild(layoutAnchor);
+            }
+
+            function exportReportToCSV() {
+                if (appState.personnel.length === 0) {
+                    alert(
+                        "No operational roster exists to compile aggregate records.",
+                    );
+                    return;
+                }
+                let dataOutputBuffer = "data:text/csv;charset=utf-8,";
+                dataOutputBuffer +=
+                    "Personnel Identity Name,Total Accumulated Hours\r\n";
+
+                appState.personnel.forEach((person) => {
+                    let cumulativeMinutesMetric = 0;
+                    Object.keys(appState.timeLogs).forEach((date) => {
+                        if (
+                            appState.timeLogs[date] &&
+                            appState.timeLogs[date][person]
+                        ) {
+                            const trackingArray =
+                                appState.timeLogs[date][person];
+                            trackingArray.forEach((block) => {
+                                if (block.start && block.end) {
+                                    const startingMarker =
+                                        parseTimeStringToMinutes(block.start);
+                                    const closingMarker =
+                                        parseTimeStringToMinutes(block.end);
+                                    if (closingMarker > startingMarker) {
+                                        cumulativeMinutesMetric +=
+                                            closingMarker - startingMarker;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    const processedSumHours = cumulativeMinutesMetric / 60;
+                    const normalizedIdentityString = person.replace(/"/g, '""');
+                    dataOutputBuffer += `"${normalizedIdentityString}",${processedSumHours.toFixed(2)}\r\n`;
+                });
+
+                const URIStream = encodeURI(dataOutputBuffer);
+                const layoutAnchor = document.createElement("a");
+                layoutAnchor.setAttribute("href", URIStream);
+                layoutAnchor.setAttribute(
+                    "download",
+                    `Grand_Totals_TimeReport_${new Date().toISOString().split("T")[0]}.csv`,
+                );
+                document.body.appendChild(layoutAnchor);
+                layoutAnchor.click();
+                document.body.removeChild(layoutAnchor);
+            }
+
             function slugify(textVal) {
                 return textVal
                     .toString()
@@ -992,7 +1338,7 @@
             function escapeJs(textVal) {
                 return String(textVal)
                     .replace(/'/g, "\\'")
-                    .replace(/"/g, '\\"');
+                    .replace(/\"/g, '\\"');
             }
         </script>
     </body>
