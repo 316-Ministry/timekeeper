@@ -463,16 +463,15 @@
                         padding-right: 160px;
                     "
                 >
-                    The total accumulated hours for each
-                    person.
+                    The total accumulated hours for each person.
                 </p>
 
                 <table class="list-table">
                     <thead>
                         <tr>
                             <th>Personnel Identity Name</th>
-                            <th style="width: 200px; text-align: right">
-                                Total Accumulated Hours
+                            <th style="width: 220px; text-align: right">
+                                Total Accumulated Time
                             </th>
                         </tr>
                     </thead>
@@ -814,27 +813,44 @@
                         }
                     });
 
-                    const grandTotalHours = aggregatedMinutes / 60;
+                    const grandTotalDisplay =
+                        formatMinutesAsHoursAndMinutes(aggregatedMinutes);
 
                     const rowElement = document.createElement("tr");
                     rowElement.innerHTML = `
                 <td><strong>${escapeHtml(person)}</strong></td>
-                <td style="text-align: right;"><span class="person-total">${grandTotalHours.toFixed(2)} HRS</span></td>
+                <td style="text-align: right;"><span class="person-total">${grandTotalDisplay}</span></td>
             `;
                     tbody.appendChild(rowElement);
                 });
             }
 
             function deletePersonnel(index) {
+                const personToRemove = appState.personnel[index];
+
                 if (
                     confirm(
-                        `Purge matching record parameter target: "${appState.personnel[index]}"?`,
+                        `Permanently remove "${personToRemove}" and delete all of their time log data?`,
                     )
                 ) {
                     appState.personnel.splice(index, 1);
+                    removePersonnelTimeLogs(personToRemove);
                     saveToLocalStorage();
                     renderPersonnelTable();
+                    renderTimeLogger();
                 }
+            }
+
+            function removePersonnelTimeLogs(personName) {
+                Object.keys(appState.timeLogs).forEach((date) => {
+                    if (appState.timeLogs[date]) {
+                        delete appState.timeLogs[date][personName];
+
+                        if (Object.keys(appState.timeLogs[date]).length === 0) {
+                            delete appState.timeLogs[date];
+                        }
+                    }
+                });
             }
 
             function renderTimeLogger() {
@@ -981,10 +997,17 @@
                 return hourUnits * 60 + minuteUnits;
             }
 
+            function formatMinutesAsHoursAndMinutes(totalMinutes) {
+                const roundedMinutes = Math.round(totalMinutes || 0);
+                const hours = Math.floor(roundedMinutes / 60);
+                const minutes = roundedMinutes % 60;
+                return `${hours}h ${minutes}m`;
+            }
+
             function exportToCSV() {
                 let textDataBuffer = "data:text/csv;charset=utf-8,";
                 textDataBuffer +=
-                    "Date,Name,Start Time,End Time,Total Hours\r\n";
+                    "Date,Name,Start Time,End Time,Total Time,Total Decimal Hours\r\n";
 
                 let linesAggregated = 0;
 
@@ -1004,15 +1027,21 @@
                                             );
                                         const parsingOut =
                                             parseTimeStringToMinutes(block.end);
-                                        let durationCalculated = 0;
+                                        let durationMinutes = 0;
                                         if (parsingOut > parsingIn) {
-                                            durationCalculated =
-                                                (parsingOut - parsingIn) / 60;
+                                            durationMinutes =
+                                                parsingOut - parsingIn;
                                         }
 
+                                        const durationCalculated =
+                                            durationMinutes / 60;
+                                        const durationDisplay =
+                                            formatMinutesAsHoursAndMinutes(
+                                                durationMinutes,
+                                            );
                                         const escapedIdentityString =
                                             person.replace(/"/g, '""');
-                                        textDataBuffer += `"${date}","${escapedIdentityString}","${block.start}","${block.end}",${durationCalculated.toFixed(2)}\r\n`;
+                                        textDataBuffer += `"${date}","${escapedIdentityString}","${block.start}","${block.end}","${durationDisplay}",${durationCalculated.toFixed(2)}\r\n`;
                                         linesAggregated++;
                                     }
                                 });
@@ -1049,7 +1078,7 @@
                 );
                 document.body.appendChild(anchorNode);
                 anchorNode.click();
-                anchorNode.removeChild(anchorNode);
+                anchorNode.remove();
             }
 
             function importFromJSON() {
@@ -1269,7 +1298,7 @@
                 }
                 let dataOutputBuffer = "data:text/csv;charset=utf-8,";
                 dataOutputBuffer +=
-                    "Personnel Identity Name,Total Accumulated Hours\r\n";
+                    "Personnel Identity Name,Total Accumulated Time,Total Accumulated Decimal Hours\r\n";
 
                 appState.personnel.forEach((person) => {
                     let cumulativeMinutesMetric = 0;
@@ -1295,8 +1324,12 @@
                         }
                     });
                     const processedSumHours = cumulativeMinutesMetric / 60;
+                    const processedSumDisplay =
+                        formatMinutesAsHoursAndMinutes(
+                            cumulativeMinutesMetric,
+                        );
                     const normalizedIdentityString = person.replace(/"/g, '""');
-                    dataOutputBuffer += `"${normalizedIdentityString}",${processedSumHours.toFixed(2)}\r\n`;
+                    dataOutputBuffer += `"${normalizedIdentityString}","${processedSumDisplay}",${processedSumHours.toFixed(2)}\r\n`;
                 });
 
                 const URIStream = encodeURI(dataOutputBuffer);
