@@ -359,6 +359,9 @@
             }
 
             .logger-navigation-panel {
+                position: sticky;
+                top: 16px;
+                z-index: 50;
                 margin-bottom: 25px;
                 border: var(--brutal-border-thin);
                 padding: 18px;
@@ -426,12 +429,46 @@
                 text-transform: uppercase;
             }
 
+            .back-to-top-btn {
+                position: fixed;
+                right: 22px;
+                bottom: 22px;
+                z-index: 1000;
+                width: 44px;
+                height: 44px;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.15rem;
+                line-height: 1;
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+                transform: translateY(12px);
+                transition:
+                    opacity 0.12s ease,
+                    visibility 0.12s ease,
+                    transform 0.12s ease,
+                    box-shadow 0.05s ease;
+            }
+
+            .back-to-top-btn.visible {
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
+                transform: translateY(0);
+            }
+
             @media (max-width: 768px) {
                 .io-section {
                     grid-template-columns: 1fr;
                 }
                 .form-group {
                     max-width: 100%;
+                }
+                .logger-navigation-panel {
+                    top: 10px;
                 }
                 .logger-search-row {
                     align-items: stretch;
@@ -440,6 +477,13 @@
 
                 .logger-results-count {
                     white-space: normal;
+                }
+
+                .back-to-top-btn {
+                    right: 14px;
+                    bottom: 14px;
+                    width: 40px;
+                    height: 40px;
                 }
             }
 
@@ -687,6 +731,17 @@
             </div>
         </div>
 
+        <button
+            id="back-to-top-btn"
+            class="back-to-top-btn"
+            type="button"
+            aria-label="Back to top"
+            title="Back to top"
+            onclick="scrollBackToTop()"
+        >
+            ↑
+        </button>
+
         <script>
             let appState = {
                 personnel: [],
@@ -708,6 +763,9 @@
                     .getElementById("logger-name-search")
                     .addEventListener("input", renderTimeLogger);
 
+                window.addEventListener("scroll", updateBackToTopButton);
+
+                updateBackToTopButton();
                 renderPersonnelTable();
                 renderTimeLogger();
             });
@@ -934,11 +992,40 @@
                 );
 
                 if (targetCard) {
-                    targetCard.scrollIntoView({
+                    const navigationPanel = document.querySelector(
+                        ".logger-navigation-panel",
+                    );
+                    const panelOffset = navigationPanel
+                        ? navigationPanel.offsetHeight + 34
+                        : 80;
+                    const targetPosition =
+                        targetCard.getBoundingClientRect().top +
+                        window.scrollY -
+                        panelOffset;
+
+                    window.scrollTo({
+                        top: Math.max(targetPosition, 0),
                         behavior: "smooth",
-                        block: "start",
                     });
                 }
+            }
+
+            function updateBackToTopButton() {
+                const backToTopButton =
+                    document.getElementById("back-to-top-btn");
+                if (!backToTopButton) return;
+
+                backToTopButton.classList.toggle(
+                    "visible",
+                    window.scrollY > 300,
+                );
+            }
+
+            function scrollBackToTop() {
+                window.scrollTo({
+                    top: 0,
+                    behavior: "smooth",
+                });
             }
 
             function switchTab(tabId, menuButton) {
