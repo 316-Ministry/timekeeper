@@ -358,12 +358,88 @@
                 gap: 30px;
             }
 
+            .logger-navigation-panel {
+                margin-bottom: 25px;
+                border: var(--brutal-border-thin);
+                padding: 18px;
+                background: var(--secondary-bg);
+                box-shadow: var(--brutal-shadow-small);
+            }
+
+            .logger-search-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 14px;
+            }
+
+            .logger-search-row label {
+                text-transform: uppercase;
+                font-size: 0.9rem;
+                white-space: nowrap;
+            }
+
+            #logger-name-search {
+                flex: 1;
+                min-width: 180px;
+            }
+
+            .logger-results-count {
+                font-size: 0.8rem;
+                text-transform: uppercase;
+                opacity: 0.75;
+                white-space: nowrap;
+            }
+
+            .alphabet-tracker {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .alpha-jump-btn {
+                min-width: 32px;
+                padding: 6px 8px;
+                font-size: 0.75rem;
+                box-shadow: none;
+            }
+
+            .alpha-jump-btn:hover {
+                box-shadow: var(--brutal-shadow-small);
+            }
+
+            .alpha-jump-btn:disabled,
+            .alpha-jump-btn:disabled:hover,
+            .alpha-jump-btn:disabled:active {
+                opacity: 0.3;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
+            .no-results-card {
+                border: var(--brutal-border-thin);
+                padding: 20px;
+                background: var(--secondary-bg);
+                text-align: center;
+                opacity: 0.75;
+                text-transform: uppercase;
+            }
+
             @media (max-width: 768px) {
                 .io-section {
                     grid-template-columns: 1fr;
                 }
                 .form-group {
                     max-width: 100%;
+                }
+                .logger-search-row {
+                    align-items: stretch;
+                    flex-direction: column;
+                }
+
+                .logger-results-count {
+                    white-space: normal;
                 }
             }
 
@@ -438,6 +514,26 @@
                 <div class="date-picker-section">
                     <label for="log-date">Target Date:</label>
                     <input type="date" id="log-date" />
+                </div>
+
+                <div class="logger-navigation-panel">
+                    <div class="logger-search-row">
+                        <label for="logger-name-search">Find Name:</label>
+                        <input
+                            type="text"
+                            id="logger-name-search"
+                            placeholder="Type a name..."
+                            autocomplete="off"
+                        />
+                        <span
+                            id="logger-results-count"
+                            class="logger-results-count"
+                        ></span>
+                    </div>
+                    <div
+                        id="logger-alpha-tracker"
+                        class="alphabet-tracker"
+                    ></div>
                 </div>
 
                 <div id="logger-roster-container"></div>
@@ -608,6 +704,10 @@
                     .getElementById("log-date")
                     .addEventListener("change", renderTimeLogger);
 
+                document
+                    .getElementById("logger-name-search")
+                    .addEventListener("input", renderTimeLogger);
+
                 renderPersonnelTable();
                 renderTimeLogger();
             });
@@ -704,8 +804,6 @@
                 if (schema) {
                     try {
                         appState = JSON.parse(schema);
-                        if (!appState.personnel) appState.personnel = [];
-                        if (!appState.timeLogs) appState.timeLogs = {};
                     } catch (error) {
                         console.error(
                             "Local context context read failure.",
@@ -713,6 +811,8 @@
                         );
                     }
                 }
+
+                normalizeWorkspaceState();
             }
 
             function saveToLocalStorage() {
@@ -720,6 +820,125 @@
                     "timelogger_app_state",
                     JSON.stringify(appState),
                 );
+            }
+
+            function normalizeWorkspaceState() {
+                if (!Array.isArray(appState.personnel)) {
+                    appState.personnel = [];
+                }
+
+                if (
+                    !appState.timeLogs ||
+                    typeof appState.timeLogs !== "object"
+                ) {
+                    appState.timeLogs = {};
+                }
+
+                appState.personnel = appState.personnel
+                    .map((person) => String(person).trim())
+                    .filter(Boolean);
+
+                sortPersonnelRoster();
+            }
+
+            function sortPersonnelRoster() {
+                appState.personnel.sort(comparePersonnelNames);
+            }
+
+            function getSortedPersonnel() {
+                return [...appState.personnel].sort(comparePersonnelNames);
+            }
+
+            function comparePersonnelNames(firstName, secondName) {
+                return String(firstName).localeCompare(
+                    String(secondName),
+                    undefined,
+                    {
+                        sensitivity: "base",
+                        numeric: true,
+                    },
+                );
+            }
+
+            function getLoggerSearchText() {
+                const searchField =
+                    document.getElementById("logger-name-search");
+                return searchField
+                    ? searchField.value.trim().toLowerCase()
+                    : "";
+            }
+
+            function getFilteredLoggerPersonnel() {
+                const searchText = getLoggerSearchText();
+                const sortedPersonnel = getSortedPersonnel();
+
+                if (!searchText) {
+                    return sortedPersonnel;
+                }
+
+                return sortedPersonnel.filter((person) =>
+                    person.toLowerCase().includes(searchText),
+                );
+            }
+
+            function getLeadingAlphabetLetter(personName) {
+                const match = String(personName)
+                    .trim()
+                    .match(/[A-Za-z]/);
+                return match ? match[0].toUpperCase() : "";
+            }
+
+            function renderLoggerAlphabetTracker(visiblePersonnel) {
+                const tracker = document.getElementById("logger-alpha-tracker");
+                if (!tracker) return;
+
+                const availableLetters = new Set(
+                    visiblePersonnel
+                        .map(getLeadingAlphabetLetter)
+                        .filter((letter) => letter.length === 1),
+                );
+
+                tracker.innerHTML = "";
+
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((letter) => {
+                    const letterButton = document.createElement("button");
+                    letterButton.type = "button";
+                    letterButton.className = "alpha-jump-btn";
+                    letterButton.textContent = letter;
+                    letterButton.disabled = !availableLetters.has(letter);
+                    letterButton.onclick = () => jumpToLoggerLetter(letter);
+                    tracker.appendChild(letterButton);
+                });
+            }
+
+            function updateLoggerResultsCount(visibleCount, totalCount) {
+                const resultsCount = document.getElementById(
+                    "logger-results-count",
+                );
+                if (!resultsCount) return;
+
+                if (totalCount === 0) {
+                    resultsCount.textContent = "";
+                    return;
+                }
+
+                resultsCount.textContent =
+                    visibleCount === totalCount
+                        ? `${totalCount} name${totalCount === 1 ? "" : "s"}`
+                        : `${visibleCount} of ${totalCount} names`;
+            }
+
+            function jumpToLoggerLetter(letter) {
+                const targetCard = document.querySelector(
+                    `#logger-roster-container .person-log-card[data-alpha="${letter}"]`,
+                );
+
+                if (targetCard) {
+                    targetCard.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                    });
+                }
             }
 
             function switchTab(tabId, menuButton) {
@@ -746,17 +965,20 @@
                 )[0];
                 tbody.innerHTML = "";
 
-                if (appState.personnel.length === 0) {
+                const sortedPersonnel = getSortedPersonnel();
+
+                if (sortedPersonnel.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
                     return;
                 }
 
-                appState.personnel.forEach((person, index) => {
+                sortedPersonnel.forEach((person) => {
                     const rowElement = document.createElement("tr");
+                    const escapedPerson = escapeAttributeJs(person);
                     rowElement.innerHTML = `
                 <td><strong>${escapeHtml(person)}</strong></td>
                 <td style="text-align: center;">
-                    <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deletePersonnel(${index})">Remove</button>
+                    <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deletePersonnel('${escapedPerson}')">Remove</button>
                 </td>
             `;
                     tbody.appendChild(rowElement);
@@ -774,21 +996,25 @@
                 }
 
                 appState.personnel.push(processedIdentity);
+                sortPersonnelRoster();
                 field.value = "";
                 saveToLocalStorage();
                 renderPersonnelTable();
+                renderTimeLogger();
             }
 
             function renderReportTable() {
                 const tbody = document.getElementById("report-table-body");
                 tbody.innerHTML = "";
 
-                if (appState.personnel.length === 0) {
+                const sortedPersonnel = getSortedPersonnel();
+
+                if (sortedPersonnel.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
                     return;
                 }
 
-                appState.personnel.forEach((person) => {
+                sortedPersonnel.forEach((person) => {
                     let aggregatedMinutes = 0;
 
                     Object.keys(appState.timeLogs).forEach((date) => {
@@ -825,15 +1051,16 @@
                 });
             }
 
-            function deletePersonnel(index) {
-                const personToRemove = appState.personnel[index];
+            function deletePersonnel(personToRemove) {
+                const rosterIndex = appState.personnel.indexOf(personToRemove);
+                if (rosterIndex === -1) return;
 
                 if (
                     confirm(
                         `Permanently remove "${personToRemove}" and delete all of their time log data?`,
                     )
                 ) {
-                    appState.personnel.splice(index, 1);
+                    appState.personnel.splice(rosterIndex, 1);
                     removePersonnelTimeLogs(personToRemove);
                     saveToLocalStorage();
                     renderPersonnelTable();
@@ -858,13 +1085,27 @@
                 const mainContainer = document.getElementById(
                     "logger-roster-container",
                 );
+                const visiblePersonnel = getFilteredLoggerPersonnel();
+                const totalPersonnelCount = appState.personnel.length;
+
                 mainContainer.innerHTML = "";
+                renderLoggerAlphabetTracker(visiblePersonnel);
+                updateLoggerResultsCount(
+                    visiblePersonnel.length,
+                    totalPersonnelCount,
+                );
 
                 if (!selectedDate) return;
 
-                if (appState.personnel.length === 0) {
+                if (totalPersonnelCount === 0) {
                     mainContainer.innerHTML =
                         '<p style="text-align: center; padding: 20px; opacity: 0.7;">Roster empty. Access the personnel tab to setup team.</p>';
+                    return;
+                }
+
+                if (visiblePersonnel.length === 0) {
+                    mainContainer.innerHTML =
+                        '<div class="no-results-card">No personnel match the current name search.</div>';
                     return;
                 }
 
@@ -872,7 +1113,7 @@
                     appState.timeLogs[selectedDate] = {};
                 }
 
-                appState.personnel.forEach((person) => {
+                visiblePersonnel.forEach((person) => {
                     if (!appState.timeLogs[selectedDate][person]) {
                         appState.timeLogs[selectedDate][person] = [];
                     }
@@ -881,18 +1122,21 @@
                         appState.timeLogs[selectedDate][person];
                     const identityCard = document.createElement("div");
                     identityCard.className = "person-log-card";
+                    identityCard.dataset.alpha =
+                        getLeadingAlphabetLetter(person);
 
                     const blockHeader = document.createElement("div");
                     blockHeader.className = "person-header";
                     blockHeader.innerHTML = `
                 <span class="person-name">${escapeHtml(person)}</span>
-                <span class="person-total"><span id="total-${slugify(person)}">0.00</span> HRS</span>
+                <span class="person-total"><span id="${getPersonTotalElementId(person)}">0.00</span> HRS</span>
             `;
                     identityCard.appendChild(blockHeader);
 
                     const innerIntervalFormWrap = document.createElement("div");
                     innerIntervalFormWrap.className = "row-intervals";
-                    innerIntervalFormWrap.id = `intervals-${slugify(person)}`;
+                    innerIntervalFormWrap.id =
+                        getPersonIntervalsElementId(person);
 
                     elementsList.forEach((interval, index) => {
                         innerIntervalFormWrap.appendChild(
@@ -927,13 +1171,14 @@
                 index,
             ) {
                 const dynamicRow = document.createElement("div");
+                const escapedPerson = escapeAttributeJs(person);
                 dynamicRow.className = "interval-row";
                 dynamicRow.innerHTML = `
             <label>In:</label>
-            <input type="time" value="${valueBlock.start || ""}" onchange="updateRowMetrics('${targetDate}', '${escapeJs(person)}', ${index}, 'start', this.value)">
+            <input type="time" value="${valueBlock.start || ""}" onchange="updateRowMetrics('${targetDate}', '${escapedPerson}', ${index}, 'start', this.value)">
             <label>Out:</label>
-            <input type="time" value="${valueBlock.end || ""}" onchange="updateRowMetrics('${targetDate}', '${escapeJs(person)}', ${index}, 'end', this.value)">
-            <button class="btn-danger" style="padding: 6px 10px; font-size: 0.75rem;" onclick="deleteIntervalBlock('${targetDate}', '${escapeJs(person)}', ${index})">✕</button>
+            <input type="time" value="${valueBlock.end || ""}" onchange="updateRowMetrics('${targetDate}', '${escapedPerson}', ${index}, 'end', this.value)">
+            <button class="btn-danger" style="padding: 6px 10px; font-size: 0.75rem;" onclick="deleteIntervalBlock('${targetDate}', '${escapedPerson}', ${index})">✕</button>
         `;
                 return dynamicRow;
             }
@@ -986,7 +1231,7 @@
 
                 const hourlySum = accruedMinutes / 60;
                 document.getElementById(
-                    `total-${slugify(identity)}`,
+                    getPersonTotalElementId(identity),
                 ).textContent = hourlySum.toFixed(2);
             }
 
@@ -1014,8 +1259,9 @@
                 Object.keys(appState.timeLogs)
                     .sort()
                     .forEach((date) => {
-                        Object.keys(appState.timeLogs[date]).forEach(
-                            (person) => {
+                        Object.keys(appState.timeLogs[date])
+                            .sort(comparePersonnelNames)
+                            .forEach((person) => {
                                 const entryBlocks =
                                     appState.timeLogs[date][person];
 
@@ -1045,8 +1291,7 @@
                                         linesAggregated++;
                                     }
                                 });
-                            },
-                        );
+                            });
                     });
 
                 if (linesAggregated === 0) {
@@ -1111,6 +1356,7 @@
                             "timeLogs" in verificationObject
                         ) {
                             appState = verificationObject;
+                            normalizeWorkspaceState();
                             saveToLocalStorage();
 
                             alert(
@@ -1248,6 +1494,7 @@
                     }
 
                     if (incomingRecordsCounter > 0) {
+                        sortPersonnelRoster();
                         saveToLocalStorage();
                         renderPersonnelTable();
                         renderTimeLogger();
@@ -1272,7 +1519,7 @@
                 let dataOutputBuffer = "data:text/csv;charset=utf-8,";
                 dataOutputBuffer += "Name\r\n";
 
-                appState.personnel.forEach((person) => {
+                getSortedPersonnel().forEach((person) => {
                     const cleanIdentifier = person.replace(/"/g, '""');
                     dataOutputBuffer += `"${cleanIdentifier}"\r\n`;
                 });
@@ -1300,7 +1547,7 @@
                 dataOutputBuffer +=
                     "Personnel Identity Name,Total Accumulated Time,Total Accumulated Decimal Hours\r\n";
 
-                appState.personnel.forEach((person) => {
+                getSortedPersonnel().forEach((person) => {
                     let cumulativeMinutesMetric = 0;
                     Object.keys(appState.timeLogs).forEach((date) => {
                         if (
@@ -1324,10 +1571,9 @@
                         }
                     });
                     const processedSumHours = cumulativeMinutesMetric / 60;
-                    const processedSumDisplay =
-                        formatMinutesAsHoursAndMinutes(
-                            cumulativeMinutesMetric,
-                        );
+                    const processedSumDisplay = formatMinutesAsHoursAndMinutes(
+                        cumulativeMinutesMetric,
+                    );
                     const normalizedIdentityString = person.replace(/"/g, '""');
                     dataOutputBuffer += `"${normalizedIdentityString}","${processedSumDisplay}",${processedSumHours.toFixed(2)}\r\n`;
                 });
@@ -1342,6 +1588,29 @@
                 document.body.appendChild(layoutAnchor);
                 layoutAnchor.click();
                 document.body.removeChild(layoutAnchor);
+            }
+
+            function getPersonTotalElementId(personName) {
+                return buildPersonElementId("total", personName);
+            }
+
+            function getPersonIntervalsElementId(personName) {
+                return buildPersonElementId("intervals", personName);
+            }
+
+            function buildPersonElementId(prefix, textVal) {
+                const baseSlug = slugify(textVal) || "person";
+                let hashValue = 0;
+
+                for (let index = 0; index < String(textVal).length; index++) {
+                    hashValue =
+                        (hashValue << 5) -
+                        hashValue +
+                        String(textVal).charCodeAt(index);
+                    hashValue |= 0;
+                }
+
+                return `${prefix}-${baseSlug}-${Math.abs(hashValue)}`;
             }
 
             function slugify(textVal) {
@@ -1370,8 +1639,15 @@
 
             function escapeJs(textVal) {
                 return String(textVal)
+                    .replace(/\\/g, "\\\\")
                     .replace(/'/g, "\\'")
-                    .replace(/\"/g, '\\"');
+                    .replace(/"/g, '\\"')
+                    .replace(/\r/g, "\\r")
+                    .replace(/\n/g, "\\n");
+            }
+
+            function escapeAttributeJs(textVal) {
+                return escapeHtml(escapeJs(textVal));
             }
         </script>
     </body>
