@@ -530,6 +530,33 @@
                 opacity: 0.8;
             }
 
+            .settings-field-row {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .settings-field-row label {
+                text-transform: uppercase;
+                font-size: 0.9rem;
+            }
+
+            .settings-status-text {
+                min-height: 18px;
+            }
+
+            .requirement-met {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 32px;
+                min-height: 32px;
+                font-size: 1.2rem;
+                background: var(--btn-bg);
+                color: var(--btn-text);
+                border: var(--brutal-border-thin);
+            }
+
             .io-actions {
                 display: flex;
                 flex-direction: column;
@@ -632,13 +659,17 @@
                         padding-right: 160px;
                     "
                 >
-                    The total accumulated hours for each person.
+                    The total accumulated hours for each person. People meeting
+                    the configured minimum are marked with a check.
                 </p>
 
                 <table class="list-table">
                     <thead>
                         <tr>
                             <th>Personnel Identity Name</th>
+                            <th style="width: 150px; text-align: center">
+                                Target Met
+                            </th>
                             <th style="width: 220px; text-align: right">
                                 Total Accumulated Time
                             </th>
@@ -714,6 +745,26 @@
 
             <div id="io-tab" class="tab-content">
                 <div class="io-section">
+                    <div class="io-card">
+                        <h3>Report Settings</h3>
+                        <div class="settings-field-row">
+                            <label for="minimum-required-hours">
+                                Minimum Required Hours:
+                            </label>
+                            <input
+                                type="number"
+                                id="minimum-required-hours"
+                                min="0"
+                                step="0.25"
+                                placeholder="e.g. 15"
+                            />
+                        </div>
+                        <p
+                            id="minimum-required-hours-status"
+                            class="settings-status-text"
+                        ></p>
+                    </div>
+
                     <div class="io-card">
                         <h3>Export Datasets</h3>
                         <div class="io-actions">
@@ -818,6 +869,9 @@
             let appState = {
                 personnel: [],
                 timeLogs: {},
+                settings: {
+                    minimumRequiredHours: 0,
+                },
             };
 
             let editingPersonnelName = null;
@@ -828,6 +882,7 @@
 
                 initThemeConfiguration();
                 loadFromLocalStorage();
+                syncMinimumRequiredHoursInput();
 
                 document
                     .getElementById("log-date")
@@ -840,6 +895,10 @@
                 document
                     .getElementById("personnel-name-search")
                     .addEventListener("input", renderPersonnelTable);
+
+                document
+                    .getElementById("minimum-required-hours")
+                    .addEventListener("input", updateMinimumRequiredHours);
 
                 window.addEventListener("scroll", updateBackToTopButton);
 
@@ -970,6 +1029,22 @@
                     appState.timeLogs = {};
                 }
 
+                if (
+                    !appState.settings ||
+                    typeof appState.settings !== "object"
+                ) {
+                    appState.settings = {};
+                }
+
+                const configuredMinimumHours = Number(
+                    appState.settings.minimumRequiredHours,
+                );
+                appState.settings.minimumRequiredHours =
+                    Number.isFinite(configuredMinimumHours) &&
+                    configuredMinimumHours > 0
+                        ? configuredMinimumHours
+                        : 0;
+
                 appState.personnel = appState.personnel
                     .map((person) => String(person).trim())
                     .filter(Boolean);
@@ -1054,6 +1129,62 @@
                     visibleCount === totalCount
                         ? `${totalCount} name${totalCount === 1 ? "" : "s"}`
                         : `${visibleCount} of ${totalCount} names`;
+            }
+
+            function getMinimumRequiredHours() {
+                const minimumHours = Number(
+                    appState.settings.minimumRequiredHours,
+                );
+                return Number.isFinite(minimumHours) && minimumHours > 0
+                    ? minimumHours
+                    : 0;
+            }
+
+            function syncMinimumRequiredHoursInput() {
+                const minimumHoursField = document.getElementById(
+                    "minimum-required-hours",
+                );
+                if (minimumHoursField) {
+                    const minimumHours = getMinimumRequiredHours();
+                    minimumHoursField.value =
+                        minimumHours > 0 ? minimumHours : "";
+                }
+                updateMinimumRequiredHoursStatus();
+            }
+
+            function updateMinimumRequiredHours() {
+                const minimumHoursField = document.getElementById(
+                    "minimum-required-hours",
+                );
+                if (!minimumHoursField) return;
+
+                const fieldValue = Number(minimumHoursField.value);
+                appState.settings.minimumRequiredHours =
+                    Number.isFinite(fieldValue) && fieldValue > 0
+                        ? fieldValue
+                        : 0;
+
+                saveToLocalStorage();
+                updateMinimumRequiredHoursStatus();
+                renderReportTable();
+            }
+
+            function updateMinimumRequiredHoursStatus() {
+                const statusElement = document.getElementById(
+                    "minimum-required-hours-status",
+                );
+                if (!statusElement) return;
+
+                const minimumHours = getMinimumRequiredHours();
+                statusElement.textContent =
+                    minimumHours > 0
+                        ? `Report target: ${minimumHours} hour${minimumHours === 1 ? "" : "s"}`
+                        : "No minimum target configured.";
+            }
+
+            function hasMetMinimumRequiredHours(totalMinutes) {
+                const minimumHours = getMinimumRequiredHours();
+                return minimumHours > 0 && totalMinutes / 60 >= minimumHours;
             }
 
             function isPersonnelNameDuplicate(personName, excludedName) {
@@ -1253,7 +1384,7 @@
                 const sortedPersonnel = getSortedPersonnel();
 
                 if (sortedPersonnel.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
                     return;
                 }
 
@@ -1284,10 +1415,16 @@
 
                     const grandTotalDisplay =
                         formatMinutesAsHoursAndMinutes(aggregatedMinutes);
+                    const minimumMetDisplay = hasMetMinimumRequiredHours(
+                        aggregatedMinutes,
+                    )
+                        ? "✓"
+                        : "";
 
                     const rowElement = document.createElement("tr");
                     rowElement.innerHTML = `
                 <td><strong>${escapeHtml(person)}</strong></td>
+                <td style="text-align: center;">${minimumMetDisplay ? `<span class="requirement-met">${minimumMetDisplay}</span>` : ""}</td>
                 <td style="text-align: right;"><span class="person-total">${grandTotalDisplay}</span></td>
             `;
                     tbody.appendChild(rowElement);
@@ -1681,6 +1818,7 @@
                             appState = verificationObject;
                             normalizeWorkspaceState();
                             saveToLocalStorage();
+                            syncMinimumRequiredHoursInput();
 
                             alert(
                                 "Import successful! Workspace structural states re-synchronized.",
@@ -1868,7 +2006,7 @@
                 }
                 let dataOutputBuffer = "data:text/csv;charset=utf-8,";
                 dataOutputBuffer +=
-                    "Personnel Identity Name,Total Accumulated Time,Total Accumulated Decimal Hours\r\n";
+                    "Personnel Identity Name,Target Met,Total Accumulated Time,Total Accumulated Decimal Hours\r\n";
 
                 getSortedPersonnel().forEach((person) => {
                     let cumulativeMinutesMetric = 0;
@@ -1897,8 +2035,13 @@
                     const processedSumDisplay = formatMinutesAsHoursAndMinutes(
                         cumulativeMinutesMetric,
                     );
+                    const minimumMetDisplay = hasMetMinimumRequiredHours(
+                        cumulativeMinutesMetric,
+                    )
+                        ? "✓"
+                        : "";
                     const normalizedIdentityString = person.replace(/"/g, '""');
-                    dataOutputBuffer += `"${normalizedIdentityString}","${processedSumDisplay}",${processedSumHours.toFixed(2)}\r\n`;
+                    dataOutputBuffer += `"${normalizedIdentityString}","${minimumMetDisplay}","${processedSumDisplay}",${processedSumHours.toFixed(2)}\r\n`;
                 });
 
                 const URIStream = encodeURI(dataOutputBuffer);
