@@ -333,6 +333,35 @@
                 flex: 1;
             }
 
+            .personnel-navigation-panel {
+                margin-bottom: 22px;
+                border: var(--brutal-border-thin);
+                padding: 18px;
+                background: var(--secondary-bg);
+                box-shadow: var(--brutal-shadow-small);
+            }
+
+            #personnel-name-search {
+                flex: 1;
+                min-width: 180px;
+            }
+
+            .table-action-row {
+                display: flex;
+                justify-content: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .table-action-row button {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            .inline-edit-input {
+                width: 100%;
+            }
+
             .list-table {
                 width: 100%;
                 border-collapse: collapse;
@@ -550,7 +579,7 @@
                     Personnel Roster
                 </button>
                 <button class="tab-btn" onclick="switchTab('io-tab', this)">
-                    Data Sync & Export
+                    Settings
                 </button>
             </div>
 
@@ -654,11 +683,27 @@
                     <button onclick="addPersonnel()">Add Personnel</button>
                 </div>
 
+                <div class="personnel-navigation-panel">
+                    <div class="logger-search-row">
+                        <label for="personnel-name-search">Find Name:</label>
+                        <input
+                            type="text"
+                            id="personnel-name-search"
+                            placeholder="Type a name..."
+                            autocomplete="off"
+                        />
+                        <span
+                            id="personnel-results-count"
+                            class="logger-results-count"
+                        ></span>
+                    </div>
+                </div>
+
                 <table class="list-table">
                     <thead>
                         <tr>
                             <th>Registered Identifier Name</th>
-                            <th style="width: 140px; text-align: center">
+                            <th style="width: 230px; text-align: center">
                                 Actions
                             </th>
                         </tr>
@@ -727,6 +772,33 @@
                             current session data maps on this local web browser.
                         </p>
                     </div>
+
+                    <div class="io-card">
+                        <h3>Workspace Reset</h3>
+                        <div class="io-actions">
+                            <button
+                                onclick="resetTimeLogs()"
+                                class="btn-danger"
+                            >
+                                Reset Time Logs
+                            </button>
+                            <p>
+                                Clears all captured time intervals while keeping
+                                the current personnel roster in place.
+                            </p>
+
+                            <button
+                                onclick="deleteAllPersonnel()"
+                                class="btn-danger"
+                            >
+                                Delete All Personnel
+                            </button>
+                            <p>
+                                Removes every personnel record and clears all
+                                linked time logs for a completely clean slate.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -748,6 +820,8 @@
                 timeLogs: {},
             };
 
+            let editingPersonnelName = null;
+
             document.addEventListener("DOMContentLoaded", () => {
                 const currentDay = new Date().toISOString().split("T")[0];
                 document.getElementById("log-date").value = currentDay;
@@ -762,6 +836,10 @@
                 document
                     .getElementById("logger-name-search")
                     .addEventListener("input", renderTimeLogger);
+
+                document
+                    .getElementById("personnel-name-search")
+                    .addEventListener("input", renderPersonnelTable);
 
                 window.addEventListener("scroll", updateBackToTopButton);
 
@@ -939,6 +1017,54 @@
                 );
             }
 
+            function getPersonnelSearchText() {
+                const searchField = document.getElementById(
+                    "personnel-name-search",
+                );
+                return searchField
+                    ? searchField.value.trim().toLowerCase()
+                    : "";
+            }
+
+            function getFilteredPersonnelRoster() {
+                const searchText = getPersonnelSearchText();
+                const sortedPersonnel = getSortedPersonnel();
+
+                if (!searchText) {
+                    return sortedPersonnel;
+                }
+
+                return sortedPersonnel.filter((person) =>
+                    person.toLowerCase().includes(searchText),
+                );
+            }
+
+            function updatePersonnelResultsCount(visibleCount, totalCount) {
+                const resultsCount = document.getElementById(
+                    "personnel-results-count",
+                );
+                if (!resultsCount) return;
+
+                if (totalCount === 0) {
+                    resultsCount.textContent = "";
+                    return;
+                }
+
+                resultsCount.textContent =
+                    visibleCount === totalCount
+                        ? `${totalCount} name${totalCount === 1 ? "" : "s"}`
+                        : `${visibleCount} of ${totalCount} names`;
+            }
+
+            function isPersonnelNameDuplicate(personName, excludedName) {
+                const targetName = String(personName).trim().toLowerCase();
+                return appState.personnel.some(
+                    (person) =>
+                        person.toLowerCase() === targetName &&
+                        person !== excludedName,
+                );
+            }
+
             function getLeadingAlphabetLetter(personName) {
                 const match = String(personName)
                     .trim()
@@ -1043,6 +1169,8 @@
                     renderTimeLogger();
                 } else if (tabId === "report-tab") {
                     renderReportTable();
+                } else if (tabId === "personnel-tab") {
+                    renderPersonnelTable();
                 }
             }
 
@@ -1052,22 +1180,49 @@
                 )[0];
                 tbody.innerHTML = "";
 
-                const sortedPersonnel = getSortedPersonnel();
+                const totalPersonnelCount = appState.personnel.length;
+                const visiblePersonnel = getFilteredPersonnelRoster();
+                updatePersonnelResultsCount(
+                    visiblePersonnel.length,
+                    totalPersonnelCount,
+                );
 
-                if (sortedPersonnel.length === 0) {
+                if (totalPersonnelCount === 0) {
                     tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No names have been added to personnel.</td></tr>`;
                     return;
                 }
 
-                sortedPersonnel.forEach((person) => {
+                if (visiblePersonnel.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; opacity: 0.6;">No personnel match the current name search.</td></tr>`;
+                    return;
+                }
+
+                visiblePersonnel.forEach((person) => {
                     const rowElement = document.createElement("tr");
                     const escapedPerson = escapeAttributeJs(person);
-                    rowElement.innerHTML = `
-                <td><strong>${escapeHtml(person)}</strong></td>
+
+                    if (editingPersonnelName === person) {
+                        rowElement.innerHTML = `
+                <td><input type="text" id="edit-person-name" class="inline-edit-input" value="${escapeHtml(person)}" onkeydown="handlePersonnelEditKey(event, '${escapedPerson}')" /></td>
                 <td style="text-align: center;">
-                    <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="deletePersonnel('${escapedPerson}')">Remove</button>
+                    <div class="table-action-row">
+                        <button onclick="savePersonnelName('${escapedPerson}')">Save</button>
+                        <button class="btn-danger" onclick="cancelEditPersonnel()">Cancel</button>
+                    </div>
                 </td>
             `;
+                    } else {
+                        rowElement.innerHTML = `
+                <td><strong>${escapeHtml(person)}</strong></td>
+                <td style="text-align: center;">
+                    <div class="table-action-row">
+                        <button onclick="startEditPersonnel('${escapedPerson}')">Edit</button>
+                        <button class="btn-danger" onclick="deletePersonnel('${escapedPerson}')">Remove</button>
+                    </div>
+                </td>
+            `;
+                    }
+
                     tbody.appendChild(rowElement);
                 });
             }
@@ -1077,7 +1232,7 @@
                 const processedIdentity = field.value.trim();
 
                 if (!processedIdentity) return;
-                if (appState.personnel.includes(processedIdentity)) {
+                if (isPersonnelNameDuplicate(processedIdentity)) {
                     alert("Name already active inside current workspace.");
                     return;
                 }
@@ -1085,6 +1240,7 @@
                 appState.personnel.push(processedIdentity);
                 sortPersonnelRoster();
                 field.value = "";
+                editingPersonnelName = null;
                 saveToLocalStorage();
                 renderPersonnelTable();
                 renderTimeLogger();
@@ -1135,6 +1291,86 @@
                 <td style="text-align: right;"><span class="person-total">${grandTotalDisplay}</span></td>
             `;
                     tbody.appendChild(rowElement);
+                });
+            }
+
+            function startEditPersonnel(personName) {
+                editingPersonnelName = personName;
+                renderPersonnelTable();
+
+                requestAnimationFrame(() => {
+                    const editField =
+                        document.getElementById("edit-person-name");
+                    if (editField) {
+                        editField.focus();
+                        editField.select();
+                    }
+                });
+            }
+
+            function cancelEditPersonnel() {
+                editingPersonnelName = null;
+                renderPersonnelTable();
+            }
+
+            function handlePersonnelEditKey(event, oldName) {
+                if (event.key === "Enter") {
+                    savePersonnelName(oldName);
+                } else if (event.key === "Escape") {
+                    cancelEditPersonnel();
+                }
+            }
+
+            function savePersonnelName(oldName) {
+                const editField = document.getElementById("edit-person-name");
+                if (!editField) return;
+
+                const newName = editField.value.trim();
+
+                if (!newName) {
+                    alert("Personnel name cannot be blank.");
+                    return;
+                }
+
+                if (newName === oldName) {
+                    editingPersonnelName = null;
+                    renderPersonnelTable();
+                    return;
+                }
+
+                if (isPersonnelNameDuplicate(newName, oldName)) {
+                    alert("Name already active inside current workspace.");
+                    return;
+                }
+
+                renamePersonnelRecord(oldName, newName);
+                editingPersonnelName = null;
+                saveToLocalStorage();
+                renderPersonnelTable();
+                renderTimeLogger();
+                renderReportTable();
+            }
+
+            function renamePersonnelRecord(oldName, newName) {
+                const rosterIndex = appState.personnel.indexOf(oldName);
+                if (rosterIndex === -1) return;
+
+                appState.personnel[rosterIndex] = newName;
+                renamePersonnelTimeLogs(oldName, newName);
+                sortPersonnelRoster();
+            }
+
+            function renamePersonnelTimeLogs(oldName, newName) {
+                Object.keys(appState.timeLogs).forEach((date) => {
+                    const dailyLogs = appState.timeLogs[date];
+                    if (!dailyLogs || typeof dailyLogs !== "object") return;
+
+                    if (
+                        Object.prototype.hasOwnProperty.call(dailyLogs, oldName)
+                    ) {
+                        dailyLogs[newName] = dailyLogs[oldName];
+                        delete dailyLogs[oldName];
+                    }
                 });
             }
 
@@ -1565,7 +1801,7 @@
                                 segmentsBuffer[parsedIndex].trim();
                             if (processedRecordName) {
                                 if (
-                                    !appState.personnel.includes(
+                                    !isPersonnelNameDuplicate(
                                         processedRecordName,
                                     )
                                 ) {
@@ -1675,6 +1911,53 @@
                 document.body.appendChild(layoutAnchor);
                 layoutAnchor.click();
                 document.body.removeChild(layoutAnchor);
+            }
+
+            function resetTimeLogs() {
+                if (
+                    !confirm(
+                        "This will permanently delete all saved time logs but keep the personnel roster. Continue?",
+                    )
+                ) {
+                    return;
+                }
+
+                appState.timeLogs = {};
+                saveToLocalStorage();
+                renderTimeLogger();
+                renderReportTable();
+                alert("All time logs have been reset.");
+            }
+
+            function deleteAllPersonnel() {
+                if (
+                    !confirm(
+                        "This will permanently delete all personnel and all linked time logs. Continue?",
+                    )
+                ) {
+                    return;
+                }
+
+                appState.personnel = [];
+                appState.timeLogs = {};
+                editingPersonnelName = null;
+                clearSearchFields();
+                saveToLocalStorage();
+                renderPersonnelTable();
+                renderTimeLogger();
+                renderReportTable();
+                alert("All personnel and time logs have been deleted.");
+            }
+
+            function clearSearchFields() {
+                const loggerSearchField =
+                    document.getElementById("logger-name-search");
+                const personnelSearchField = document.getElementById(
+                    "personnel-name-search",
+                );
+
+                if (loggerSearchField) loggerSearchField.value = "";
+                if (personnelSearchField) personnelSearchField.value = "";
             }
 
             function getPersonTotalElementId(personName) {
